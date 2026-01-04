@@ -52,9 +52,9 @@ This structure mirrors real systems and avoids analytics pitfalls such as double
 The following ERD represents the **normalized OLTP schema** used as the system of record.
 It models real hotel operations including bookings, stays, inventory, billing, and payments.
 
-![Hotel OLTP ERD](docs/hotel_oltp_erd.png)
+![Hotel OLTP ERD](docs/hotel_oltp_full_erd.jpeg)
 
-[Open full-resolution ERD](docs/hotel_oltp_erd.png)
+[Open full-resolution ERD](docs/hotel_oltp_full_erd.jpeg)
 
 
 > The schema separates booking intent from stay execution, static room inventory from
