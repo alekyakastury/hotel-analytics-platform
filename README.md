@@ -46,3 +46,21 @@ This structure mirrors real systems and avoids analytics pitfalls such as double
 ## Architecture Overview
 
 **Current stage (OLTP)**
+
+## OLTP Data Model (PostgreSQL)
+
+The following ERD represents the **normalized OLTP schema** used as the system of record.
+It models real hotel operations including bookings, stays, inventory, billing, and payments.
+
+![Hotel OLTP ERD](docs/hotel_oltp_erd.png)
+
+[Open full-resolution ERD](docs/hotel_oltp_erd.png)
+
+
+> The schema separates booking intent from stay execution, static room inventory from
+> room-night occupancy, and invoices from payments to support accurate analytics downstream.
+
+## Analytics Model (Coming Next)
+
+A dimensional analytics model (facts & dimensions) will be built in Snowflake using dbt
+on top of this OLTP foundation.
