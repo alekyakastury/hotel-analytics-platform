@@ -1,54 +1,48 @@
 # Hotel Analytics Platform
 
-A production-style **end-to-end data engineering project** that models real hotel operations using a modern analytics stack.
+A production-style data engineering project that models real hotel operations in an **OLTP PostgreSQL system** and prepares the foundation for **analytics modeling (Snowflake + dbt)**.
 
-This project demonstrates how an OLTP system (PostgreSQL) can be designed, seeded with realistic transactional data, and later transformed into analytics-ready datasets for reporting and decision-making.
-
----
-
-## 🎯 Project Goals
-
-- Design a **normalized OLTP schema** that reflects real hotel operations:
-  bookings, stays, room inventory, pricing, billing, and payments
-- Ensure the system is **reproducible end-to-end** using Docker and SQL
-- Seed the database with **realistic transactional data** suitable for analytics
-- Lay a clean foundation for downstream **analytics engineering (dbt, Snowflake)**
-
-This project intentionally mirrors how data is modeled and bootstrapped in real production environments.
+This repo emphasizes **data modeling, integrity, and reproducibility** (not just queries): the same concerns you face in production systems.
 
 ---
 
-## 🧱 Architecture Overview
+## Tech Stack
 
-**Current stage (OLTP):**
-
-### Why This OLTP Schema Is Realistic
-
-The schema intentionally separates:
-- **Bookings vs. stays** (planned vs. actual execution)
-- **Room inventory vs. room-night occupancy**
-- **Invoices vs. payments vs. refunds**
-
-These distinctions mirror real production systems and prevent common analytics pitfalls such as:
-- double-counting revenue
-- incorrect occupancy calculations
-- mixing booking intent with realized stays
-
-## Analytics Use Cases Enabled
-
-This OLTP model enables downstream analytics such as:
-- Daily occupancy rate by hotel and room type
-- Revenue, ADR, and RevPAR trends
-- Cancellation and no-show impact analysis
-- Promotion effectiveness and discount leakage
-- Customer lifetime value and repeat behavior
-
-These metrics will be modeled in Snowflake using dbt in subsequent stages.
-
-**Tech Stack**
-- PostgreSQL (OLTP)
-- Docker & Docker Compose
-- SQL (DDL + transactional seeding)
+**Current**
+- PostgreSQL (OLTP system of record)
+- Docker + Docker Compose
+- SQL (transactional DDL + rerunnable seed)
 - pgAdmin (UI inspection)
 
-*Planned:* Snowflake, dbt, Airflow
+**Planned**
+- Snowflake (OLAP warehouse)
+- dbt (transformations + marts)
+- Airflow (optional orchestration)
+
+---
+
+## Project Goals
+
+- Model a **normalized OLTP schema** for hotel operations (bookings, stays, inventory, pricing, billing, payments)
+- Make the system **reproducible end-to-end** using Docker + SQL
+- Seed with **realistic transactional data** suitable for analytics validation
+- Build toward analytics-ready marts (facts/dims) using Snowflake + dbt
+
+---
+
+## Why This OLTP Schema Is Realistic
+
+The schema intentionally separates concepts that are commonly conflated in toy projects:
+
+- **Booking vs Stay**: planned intent vs actual execution (check-in/out, no-shows)
+- **Room vs Room Night**: static inventory vs day-level occupancy (prevents wrong occupancy metrics)
+- **Invoice vs Payment vs Refund**: financial truth with auditability (prevents revenue double-counting)
+- **Discounts/Promotions/Taxes**: modeled explicitly for accurate net revenue analytics
+
+This structure mirrors real systems and avoids analytics pitfalls such as double-counting revenue, incorrect occupancy rates, and mixing “booked” with “stayed”.
+
+---
+
+## Architecture Overview
+
+**Current stage (OLTP)**
