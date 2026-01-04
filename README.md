@@ -21,3 +21,34 @@ This project intentionally mirrors how data is modeled and bootstrapped in real 
 ## 🧱 Architecture Overview
 
 **Current stage (OLTP):**
+
+### Why This OLTP Schema Is Realistic
+
+The schema intentionally separates:
+- **Bookings vs. stays** (planned vs. actual execution)
+- **Room inventory vs. room-night occupancy**
+- **Invoices vs. payments vs. refunds**
+
+These distinctions mirror real production systems and prevent common analytics pitfalls such as:
+- double-counting revenue
+- incorrect occupancy calculations
+- mixing booking intent with realized stays
+
+## Analytics Use Cases Enabled
+
+This OLTP model enables downstream analytics such as:
+- Daily occupancy rate by hotel and room type
+- Revenue, ADR, and RevPAR trends
+- Cancellation and no-show impact analysis
+- Promotion effectiveness and discount leakage
+- Customer lifetime value and repeat behavior
+
+These metrics will be modeled in Snowflake using dbt in subsequent stages.
+
+**Tech Stack**
+- PostgreSQL (OLTP)
+- Docker & Docker Compose
+- SQL (DDL + transactional seeding)
+- pgAdmin (UI inspection)
+
+*Planned:* Snowflake, dbt, Airflow
