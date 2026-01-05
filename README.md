@@ -47,7 +47,7 @@ This structure mirrors real systems and avoids analytics pitfalls such as double
 
 This project was designed to mirror a real-world analytics engineering pipeline, with a strong emphasis on correctness, reproducibility, and scalability, rather than tooling for its own sake.
 
-![Data Flow Diagram](docs\data_flow_diagram.png)
+![Data Flow Diagram](docs/data_flow_diagram.png)
 
 ### 1. OLTP (PostgreSQL) → Analytics (Snowflake) Separation
 
