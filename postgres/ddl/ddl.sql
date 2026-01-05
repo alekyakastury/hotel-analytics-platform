@@ -492,6 +492,49 @@ CREATE TABLE IF NOT EXISTS audit_log (
   performed_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+
+-- =========================================================
+-- Natural keys / idempotency constraints (for seed + upserts)
+-- =========================================================
+
+-- ADDRESS: allow lookup without hardcoded IDs
+ALTER TABLE address
+  ADD CONSTRAINT uq_address_natural
+  UNIQUE (street, city, state, country, postal_code);
+
+-- HOTEL: allow stable upserts/lookup
+-- If brand can be NULL, UNIQUE(name, brand) is still OK in Postgres (NULLs treated distinct),
+-- but consider forcing brand NOT NULL or using name alone.
+ALTER TABLE hotel
+  ADD CONSTRAINT uq_hotel_name_brand
+  UNIQUE (name, brand);
+
+-- ROOM_TYPE: seed uses lookup by name
+ALTER TABLE room_type
+  ADD CONSTRAINT uq_room_type_name
+  UNIQUE (name);
+
+-- CUSTOMER: seed + joins should use email as natural key
+-- (If you want to allow NULL emails, keep email nullable but UNIQUE works fine; multiple NULLs allowed.)
+ALTER TABLE customer
+  ADD CONSTRAINT uq_customer_email
+  UNIQUE (email);
+
+-- EMPLOYEE: seed uses email as natural key (recommended)
+ALTER TABLE employee
+  ADD CONSTRAINT uq_employee_email
+  UNIQUE (email);
+
+-- BOOKING_DISCOUNT: prevent duplicate discounts on rerun
+ALTER TABLE booking_discount
+  ADD CONSTRAINT uq_booking_discount_booking_promo
+  UNIQUE (booking_id, promotion_id);
+
+-- OPTIONAL: one invoice per booking (matches your seed logic)
+ALTER TABLE invoice
+  ADD CONSTRAINT uq_invoice_booking
+  UNIQUE (booking_id);
+
 -- =========================================================
 -- Indexes (FK + common filters)
 -- =========================================================
