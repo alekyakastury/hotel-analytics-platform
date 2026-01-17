@@ -1,0 +1,74 @@
+version: 1
+
+source:
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "hotel_oltp"
+    user: "postgres"
+    password_env: "POSTGRES_PASSWORD"   # read from env var (recommended)
+    schema: "public"
+
+export:
+  output_dir: "./data/exports"
+  format: "csv"                  # csv only for now
+  compression: "gzip"            # none|gzip
+  delimiter: ","
+  header: true
+  null_as: ""
+  file_naming:
+    pattern: "{table}{partition_suffix}.{ext}"  # ext becomes csv or csv.gz
+  row_grouping:
+    max_rows_per_file: 500000     # splits big exports into multiple files
+  
+target:
+  snowflake:
+    account: "BAJLLOB-CN38560"
+    user: "ALEKYAKASTURY"
+    password_env: "SNOWFLAKE_PASSWORD"   # recommended
+    role: "ACCOUNTADMIN"
+    warehouse: "COMPUTE_WH"
+    database: "HOTEL_ANALYTICS"
+    schema: "RAW"
+    stage: "LANDING_STAGE"
+
+tables:
+  hotel:
+  - name: "hotel"
+    mode: "table"
+    table: "hotel"
+    order_by: "hotel_id"
+
+  room_type:
+  - name: "room_type"
+    mode: "table"
+    table: "room_type"
+    order_by: "room_type_id"
+
+  room:
+  - name: "room"
+    mode: "table"
+    table: "room"
+    order_by: "room_id"
+
+  booking:
+  - name: "booking"
+    mode: "query"
+    query: |
+      SELECT *
+      FROM booking
+    order_by: "booking_id"
+    partition:
+      type: "date_range"
+      column: "created_at"
+      granularity: "month"
+      start: "2024-01-01"
+      end: "2026-01-01"
+
+  booking_room:
+  - name: "booking_room"
+    mode: "query"
+    query: |
+      SELECT br.*
+      FROM booking_room br
+    order_by: "booking_room_id"

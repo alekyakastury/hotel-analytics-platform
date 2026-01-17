@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    database: HOTEL_ANALYTICS
+    schema: RAW
+    tables:
+      - name: BOOKING_RAW
+      - name: BOOKING_ROOM_RAW
+      - name: HOTEL_RAW
+      - name: ROOM_RAW
+      - name: ROOM_TYPE_RAW
