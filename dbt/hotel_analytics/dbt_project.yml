@@ -32,5 +32,33 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   hotel_analytics:
     # Config indicated by + and applies to all files under models/example/
-    example:
-      +materialized: view
+
+    # RAW layer: sources only (no models built here)
+    raw:
+      +materialized: table
+      +schema: RAW
+      +tags: ["raw"]
+
+    # STAGING: clean, standardized tables
+    staging:
+      +materialized: table
+      +schema: STAGING
+      +tags: ["staging"]
+
+    # DATAMART: analytics-ready star schema + KPI tables
+    marts:
+      +materialized: table
+      +schema: DATAMART
+      +tags: ["mart"]
+
+      # Optional subfolder organization
+      core:
+        +tags: ["core"]
+
+      metrics:
+        +tags: ["metrics"]
+
+# Tests (keep it lightweight for now)
+tests:
+  hotel_analytics:
+    +severity: warn

@@ -6,7 +6,7 @@ source:
     port: 5432
     database: "hotel_oltp"
     user: "postgres"
-    password_env: "POSTGRES_PASSWORD"   # read from env var (recommended)
+    password_env: "POSTGRES_PASSWORD"   # read from env var
     schema: "public"
 
 export:
@@ -25,7 +25,7 @@ target:
   snowflake:
     account: "BAJLLOB-CN38560"
     user: "ALEKYAKASTURY"
-    password_env: "SNOWFLAKE_PASSWORD"   # recommended
+    password_env: "SNOWFLAKE_PASSWORD"  
     role: "ACCOUNTADMIN"
     warehouse: "COMPUTE_WH"
     database: "HOTEL_ANALYTICS"
@@ -72,3 +72,9 @@ tables:
       SELECT br.*
       FROM booking_room br
     order_by: "booking_room_id"
+
+  address:
+  - name: "address"
+    mode: "table"
+    table: "address"
+    order_by: "address_id"

@@ -10,3 +10,4 @@ sources:
       - name: HOTEL_RAW
       - name: ROOM_RAW
       - name: ROOM_TYPE_RAW
+      - name: ADDRESS_RAW

@@ -5,3 +5,4 @@ __pycache__/
 .pgdata/
 .vscode/
 .idea/
+config/*.pem
