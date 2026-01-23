@@ -139,8 +139,6 @@ It reflects how analytics platforms are built at data-driven companies—not jus
 5. Refresh Power BI dashboards
 6. Schedule the full pipeline via Airflow
 
-> Detailed setup steps are documented in the `/docs` folder.
-
 ---
 
 ## Future Improvements
