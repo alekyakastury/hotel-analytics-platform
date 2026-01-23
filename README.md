@@ -21,17 +21,7 @@ The goal is not just dashboards, but **trustworthy data foundations** that analy
 
 **OLTP → OLAP → Analytics → BI**
 
-```
-PostgreSQL (OLTP)
-   ↓
-Snowflake (RAW → STAGING → DATAMART)
-   ↓
-dbt (models, tests, transformations)
-   ↓
-Power BI (business-facing dashboards)
-   ↓
-Airflow + Docker (orchestration & scheduling)
-```
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/e6ac9004-72a8-4fef-9ed4-7a7f0a44b611" />
 
 ---
 
@@ -88,6 +78,12 @@ Airflow + Docker (orchestration & scheduling)
 
 ---
 
+## OLTP Data Model Diagram
+
+<img width="4740" height="2645" alt="image" src="https://github.com/user-attachments/assets/8598bd18-c90d-499e-82ad-b96915a79b60" />
+
+---
+
 ## Data Model (High Level)
 
 * **Fact Tables**
@@ -110,6 +106,14 @@ Models are designed to support:
 * Time-series analysis
 * Trend comparisons
 * Drill-downs by hotel, room type, and date
+
+---
+
+## Power BI Reports
+
+<img width="718" height="562" alt="image" src="https://github.com/user-attachments/assets/b2a4cd8f-e8f8-4fe5-a37e-3ce5964b36ff" />
+
+<img width="726" height="570" alt="image" src="https://github.com/user-attachments/assets/209f582e-669b-4ee0-a91f-e25adfc93a70" />
 
 ---
 
