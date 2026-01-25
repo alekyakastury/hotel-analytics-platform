@@ -2,15 +2,15 @@ version: 1
 
 source:
   postgres:
-    host: "localhost"
+    host: "postgres"
     port: 5432
     database: "hotel_oltp"
     user: "postgres"
-    password_env: "POSTGRES_PASSWORD"   # read from env var
+    password_env: "postgres"   # read from env var
     schema: "public"
 
 export:
-  output_dir: "./data/exports"
+  output_dir: "/opt/data"
   format: "csv"                  # csv only for now
   compression: "gzip"            # none|gzip
   delimiter: ","
@@ -25,7 +25,7 @@ target:
   snowflake:
     account: "BAJLLOB-CN38560"
     user: "ALEKYAKASTURY"
-    password_env: "SNOWFLAKE_PASSWORD"  
+    password_env: "Dilation!Manifesto6"  
     role: "ACCOUNTADMIN"
     warehouse: "COMPUTE_WH"
     database: "HOTEL_ANALYTICS"
@@ -76,5 +76,6 @@ tables:
   address:
   - name: "address"
     mode: "table"
+    schema: "public"
     table: "address"
     order_by: "address_id"

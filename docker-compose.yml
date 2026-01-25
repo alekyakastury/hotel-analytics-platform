@@ -1,27 +1,106 @@
-version: "3.9"
-
 services:
+  # Your hotel OLTP database (keeps your existing setup)
   postgres:
     image: postgres:16
     container_name: hotel_postgres
     restart: unless-stopped
-
     environment:
-      POSTGRES_USER: 
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 
       POSTGRES_DB: hotel_oltp
-
     ports:
       - "5432:5432"
-
     volumes:
       - pgdata:/var/lib/postgresql/data
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  # Airflow metadata database (SEPARATE)
+  postgres_airflow:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: 
+      POSTGRES_DB: airflow
+    # IMPORTANT: do NOT publish 5432; keep internal to the compose network
+    volumes:
+      - airflow_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  airflow-webserver:
+    build: ./airflow
+    depends_on:
+      postgres_airflow:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      ENV_FILE: "/opt/airflow/.env"
+      AIRFLOW_HOME: /opt/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "a-very-long-random-string-change-me"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/opt/data
+      - ./airflow/dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./dbt:/dbt
+      - ./config:/opt/config:ro
+      - ./.env:/opt/airflow/.env:ro
+    command: >
+      bash -lc "
+      airflow db migrate &&
+      airflow users create
+        --username admin --password admin
+        --firstname Admin --lastname User
+        --role Admin --email admin@example.com || true &&
+      airflow webserver
+      "
+
+
+  airflow-scheduler:
+    build: ./airflow
+    depends_on:
+      postgres_airflow:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+      ENV_FILE: "/opt/airflow/.env"
+      AIRFLOW_HOME: /opt/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "a-very-long-random-string-change-me"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./data:/opt/data
+      - ./airflow/dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./dbt:/dbt
+      - ./config:/opt/config:ro
+      - ./.env:/opt/airflow/.env:ro
+    command: >
+      bash -lc "
+      airflow db migrate &&
+      airflow scheduler &&
+      "
 
 volumes:
   pgdata:
+  airflow_pg_data:

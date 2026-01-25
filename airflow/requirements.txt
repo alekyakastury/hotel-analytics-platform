@@ -1,0 +1,7 @@
+python-dotenv==1.0.1
+psycopg2-binary==2.9.9
+snowflake-connector-python==3.12.3
+snowflake-ingest==1.0.11
+dbt-snowflake==1.8.4
+faker==40.1.2
+

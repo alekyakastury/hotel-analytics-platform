@@ -3,7 +3,7 @@
 
 # ## Postgres to Snowflake Export
 
-# In[1]:
+# In[ ]:
 
 
 from __future__ import annotations
@@ -13,35 +13,27 @@ import gzip
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional, Tuple, List
-import psycopg2
-import snowflake.connector
-import pandas as pd
-import os
-from dotenv import load_dotenv
-import copy
-import gzip
-import math
-from dataclasses import dataclass
-from datetime import date, datetime
-from pathlib import Path
+from datetime import datetime, timezone, timedelta, date
 from typing import Any, Dict, List, Optional, Tuple
-from pathlib import Path
-import yaml
 import psycopg2
 import psycopg2.extras
 from psycopg2.extensions import connection as Psycopg2Connection
-from datetime import datetime, timedelta
-import tempfile
 from psycopg2 import sql
+import snowflake.connector
+import pandas as pd
+from dotenv import load_dotenv
+import copy
+import math
+from pathlib import Path
+import yaml
 import subprocess
 import shlex
 from dateutil import parser
-import datetime
-from snowflake.ingest import SimpleIngestManager, StagedFile
+#from snowflake.ingest import SimpleIngestManager, StagedFile
 import json
 import uuid
+import socket
+import requests
 from cryptography.hazmat.primitives import serialization
 
 
@@ -49,7 +41,7 @@ from cryptography.hazmat.primitives import serialization
 
 # ### Load config file
 
-# In[2]:
+# In[ ]:
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -65,7 +57,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 # ### Validate config file
 
-# In[3]:
+# In[ ]:
 
 
 def validate_config(cfg: Dict[str, Any]) -> None:
@@ -121,7 +113,7 @@ def validate_config(cfg: Dict[str, Any]) -> None:
             raise KeyError(f"Table {t['name']} missing 'query' key for mode 'query'")
 
 
-# In[4]:
+# In[ ]:
 
 
 def validate_yaml_file(path: str) -> Dict[str, Any]:
@@ -145,7 +137,7 @@ def validate_yaml_file(path: str) -> Dict[str, Any]:
 
 # ### Create postgres database connection
 
-# In[5]:
+# In[ ]:
 
 
 @dataclass(frozen=True)
@@ -159,7 +151,7 @@ class PostgresCreds:
     
 
 
-# In[6]:
+# In[ ]:
 
 
 def create_pg_connection(creds: PostgresCreds) -> Psycopg2Connection:
@@ -189,7 +181,7 @@ def create_pg_connection(creds: PostgresCreds) -> Psycopg2Connection:
 
 # ### Create Snowflake connection
 
-# In[7]:
+# In[ ]:
 
 
 @dataclass(frozen=True)
@@ -204,7 +196,7 @@ class SnowflakeCreds:
     sf_landing_stage: Optional[str]
 
 
-# In[8]:
+# In[ ]:
 
 
 def _snowsql_base_cmd(creds: SnowflakeCreds, snowsql_path: str = "snowsql") -> list[str]:
@@ -219,7 +211,7 @@ def _snowsql_base_cmd(creds: SnowflakeCreds, snowsql_path: str = "snowsql") -> l
     return cmd
 
 
-# In[9]:
+# In[ ]:
 
 
 def _run_snowsql(creds: SnowflakeCreds, sql: str, *, snowsql_path: str = "snowsql", timeout_sec: int = 300) -> str:
@@ -246,11 +238,89 @@ def _run_snowsql(creds: SnowflakeCreds, sql: str, *, snowsql_path: str = "snowsq
     return proc.stdout
 
 
+# In[ ]:
+
+
+def configure_network_for_snowflake(
+    proxy_url: str = "http://proxy.mycorp.com:8080",
+    snowflake_host: str = "account_name",
+    timeout_s: int = 8,
+):
+    """
+    Makes Snowflake + stage (S3) uploads work without manual toggling.
+
+    Strategy:
+    - If proxy hostname resolves (likely on VPN/corp network):
+        Use proxy for general internet (so S3 works),
+        but bypass proxy for *.snowflakecomputing.com (so Snowflake doesn't get stuck on proxy DNS rules).
+    - If proxy hostname does NOT resolve (likely off VPN/home network):
+        Disable proxy env vars entirely and go direct.
+    - Then run quick connectivity checks for Snowflake host DNS + S3 reachability.
+    """
+    
+    def can_resolve(host: str) -> bool:
+        try:
+            socket.getaddrinfo(host, 80)
+            return True
+        except OSError:
+            return False
+
+    proxy_host = proxy_url.replace("http://", "").replace("https://", "").split(":")[0]
+    proxy_resolves = can_resolve(proxy_host)
+
+    if proxy_resolves:
+        # Proxy is usable (VPN/corp). Keep it for S3, but bypass for Snowflake.
+        for k in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"]:
+            os.environ[k] = proxy_url
+
+        no_proxy = ",".join([
+            "localhost", "127.0.0.1",
+            snowflake_host,
+            ".snowflakecomputing.com",
+        ])
+        os.environ["NO_PROXY"] = no_proxy
+        os.environ["no_proxy"] = no_proxy
+        mode = "PROXY_FOR_S3__BYPASS_FOR_SNOWFLAKE"
+    else:
+        # Proxy not resolvable (home/off VPN). Go fully direct.
+        for k in ["HTTP_PROXY","HTTPS_PROXY","ALL_PROXY","http_proxy","https_proxy","all_proxy"]:
+            os.environ.pop(k, None)
+        os.environ["NO_PROXY"] = ",".join(["localhost","127.0.0.1",snowflake_host,".snowflakecomputing.com"])
+        os.environ["no_proxy"] = os.environ["NO_PROXY"]
+        mode = "DIRECT_NO_PROXY"
+
+    # --- Fast checks ---
+    # 1) Snowflake DNS
+    try:
+        socket.getaddrinfo(snowflake_host, 443)
+        snowflake_dns_ok = True
+    except OSError:
+        snowflake_dns_ok = False
+
+    # 2) S3 reachability (HEAD is enough)
+    s3_ok = None
+    try:
+        r = requests.head("https://s3.amazonaws.com", timeout=timeout_s)
+        s3_ok = (r.status_code < 500)
+    except Exception:
+        s3_ok = False
+
+    return {
+        "mode": mode,
+        "proxy_resolves": proxy_resolves,
+        "snowflake_dns_ok": snowflake_dns_ok,
+        "s3_ok": s3_ok,
+        "http_proxy": os.environ.get("HTTP_PROXY"),
+        "no_proxy": os.environ.get("NO_PROXY"),
+    }
+
+
+
 # ## 3) Pipeline
 
 # ### Extract data from postgres
 
-# In[10]:
+# In[ ]:
 
 
 def get_table_columns(conn: psycopg2.extensions.connection, schema: str, table: str) -> List[str]:
@@ -277,7 +347,7 @@ def get_table_columns(conn: psycopg2.extensions.connection, schema: str, table: 
     return columns
 
 
-# In[11]:
+# In[ ]:
 
 
 def get_table_pk(conn: psycopg2.extensions.connection, schema: str, table: str) -> Optional[List[str]]:
@@ -310,7 +380,7 @@ def get_table_pk(conn: psycopg2.extensions.connection, schema: str, table: str) 
     return pk_columns if pk_columns else None
 
 
-# In[12]:
+# In[ ]:
 
 
 def estimate_rowcount(conn: psycopg2.extensions.connection, sql: str) -> int:
@@ -337,7 +407,7 @@ def estimate_rowcount(conn: psycopg2.extensions.connection, sql: str) -> int:
     return rowcount
 
 
-# In[13]:
+# In[ ]:
 
 
 def build_base_query(table_cfg: Dict, schema_default: str, columns: List[str] = None) -> str:
@@ -378,7 +448,7 @@ def build_base_query(table_cfg: Dict, schema_default: str, columns: List[str] = 
         raise ValueError(f"Unknown mode '{mode}' for table '{table_cfg.get('name')}'")
 
 
-# In[32]:
+# In[ ]:
 
 
 def apply_partition_clause(
@@ -451,7 +521,7 @@ def apply_partition_clause(
     return sqls
 
 
-# In[15]:
+# In[ ]:
 
 
 def plan_file_splits(rowcount: int, max_rows_per_file: int) -> List[Dict[str, int]]:
@@ -481,7 +551,7 @@ def plan_file_splits(rowcount: int, max_rows_per_file: int) -> List[Dict[str, in
     return chunks
 
 
-# In[16]:
+# In[ ]:
 
 
 def build_chunk_query(
@@ -514,7 +584,7 @@ def build_chunk_query(
 
 # #### Load data into snowflake
 
-# In[21]:
+# In[ ]:
 
 
 def postgres_query_to_snowflake_table(
@@ -615,7 +685,7 @@ def postgres_query_to_snowflake_table(
     }
 
 
-# In[36]:
+# In[ ]:
 
 
 def main():
@@ -627,7 +697,7 @@ def main():
     passwords_path=config_path/".env"
 
     ##### Store all passwords
-    load_dotenv(dotenv_path=passwords_path)  # loads .env into environment variables
+    load_dotenv(dotenv_path=passwords_path,override=True)  # loads .env into environment variables
     postgres_password = os.getenv("POSTGRES_PASSWORD")
     snowflake_password = os.getenv("SNOWFLAKE_PASSWORD")
     config=load_config(config_yaml)
@@ -666,6 +736,7 @@ def main():
         sf_landing_stage=sf_cfg.get("stage")
     )
 
+    net = configure_network_for_snowflake(sf_creds.account)
     ####### Hotel Config
     table_schema=pg_cfg.get("schema")
     sqls=[]
@@ -701,6 +772,12 @@ def main():
 
 
 if __name__=="__main__":main()
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
